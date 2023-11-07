@@ -1,0 +1,119 @@
+module wav_player(
+
+ input CLK,
+
+ input switch_play,
+
+ output reg audio_out
+
+ );
+
+//Next, there is a local parameter to hold the number of bytes of data contained  in the audio file. The format for specifying the memory looks like a regular reg declaration except that as well as specifying the size of each element of the data  (7:0) the quantity of such memory locations is also specified (MEM_SIZE-1:0)  after the name of the memory (memory):
+
+
+
+localparam MEM_SIZE = 19783; 
+
+reg [7:0] memory[MEM_SIZE-1:0];
+
+//To load up the memory with data, a special command $readmemh (“read memory hex”) is used contained in an initial block. The $readmemh command  takes two parameters, the name of the data file to be loaded into the memory and  the name given to the memory. This loading happens during synthesis:
+
+
+
+initial begin
+
+ $readmemh("01_03_b19783.txt", memory);
+
+end
+
+//The file format for $readmemh is hexadecimal numbers, one per line. In the  section “Preparing Your Own Sounds,” you will learn how to create such a file.  The switch is linked to a debouncer in the usual way:
+
+
+
+wire s_start;
+
+debouncer d1(.CLK (CLK), .switch_input (switch_play), 
+
+ .trans_up (s_start));
+
+//To control the playing of the sound file, a register play is used. This acts as a  flip-flop to turn the pulses to the address counter on and off. The prescalercounter is used to decrease the clock frequency of the board to match the sample  rate of the board. The 8-bit counter is used as the PWM counter, and value is  used for the contents of the memory currently referred to by address.
+
+//Figure 8-6 shows how all these things relate to each other. It also gives a clue as  to what the Verilog is likely to be synthesized to.
+
+
+
+reg play = 0;
+
+reg [3:0] prescaler; 
+
+reg [7:0] counter;
+
+reg [19:0] address;
+
+reg [7:0] value;
+
+//The always block increments the prescaler counter only if play is 1. If you  skip down to the end of the always block, you will see that this happens when the  “Start” button is pressed. Assuming that the button has been pressed, the prescaler  does its job of dividing the clock frequency from the 50-MHz input clock (this is the  Mojo version) down to 2 MHz. Then counter is incremented, and the data from  the current memory location are latched into value. The value of the current memory location is then compared with counter and audio_out set appropriately.
+
+//Schematic for the sound file player.png
+
+
+//this results in a PWM output with pulses that are longer for a high  amplitude and shorter for a low amplitude. When the value of address reaches  MEMORY_SIZE, play is reset to stop the prescaler clocking and prevent any further  audio playing until the button is pressed again:
+
+
+
+always @(posedge CLK)
+
+begin
+
+ if (play)
+
+ begin
+
+ prescaler <= prescaler + 1;
+
+ if (prescaler == 15) // 8kHz x 256 steps = 2.048 MHz
+
+ begin
+
+ prescaler <= 0;
+
+ counter <= counter + 1;
+
+ value <= memory[address];
+
+ audio_out <= (value > counter);
+
+ if (counter == 255)
+
+ begin
+
+ address <= address + 1;
+
+ if (address == MEM_SIZE)
+
+ begin
+
+ play <= 0;
+
+ address <= 0;
+
+ end 
+
+ end 
+
+ end
+
+ end
+
+ if (s_start)
+
+ begin
+
+ play <= 1;
+
+ end
+
+end
+
+endmodule
+

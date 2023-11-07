@@ -1,0 +1,242 @@
+module proj1( input CLOCK_50, input [9:0] SW, input [0:0] KEY, output reg [1:0] GPIO, 
+output reg [7:0] HEX0, output reg [7:0] HEX1, output reg [7:0] HEX2, output reg [7:0] HEX3, 
+output reg [7:0] HEX4, output reg [7:0] HEX5, output reg [9:0]  LEDR);
+
+
+
+
+
+localparam MEM_SIZE1 = 37; 
+localparam MEM_SIZE2 = 37 + 1966;
+localparam MEM_SIZE3 = 37 + 1966 + 102; 
+reg MEM_SIZE_init = 0;
+reg MEM_SIZE_fin = 0;
+
+//reg [10:0] memory1[MEM_SIZE1-1:0];
+//reg [7:0] memory2[MEM_SIZE2-1:MEM_SIZE1];
+//reg [7:0] memory3[MEM_SIZE3-1:MEM_SIZE2];
+reg [10:0] memory[2200:0];
+reg [31:0] ledcounter;
+wire stop;
+
+reg clock; // output clock after dividing the input clock by divisor
+reg[27:0] count=28'd0;
+parameter DIVISOR = 28'd500;
+// The frequency of the output clk_out
+//  = The frequency of the input clk_in divided by DIVISOR
+// For example: Fclk_in = 50Mhz, if you want to get 1Hz signal to blink LEDs
+// You will modify the DIVISOR parameter value to 28'd50.000.000
+// Then the frequency of the output clk_out = 50Mhz/50.000.000 = 1Hz
+always @(posedge CLOCK_50)
+begin
+
+ count <= count + 28'd1;
+ if(count>=(DIVISOR-1))
+  count <= 28'd0;
+ clock <= (count<DIVISOR/2)?1'b1:1'b0;
+end
+
+initial begin
+
+ $readmemh("audio4.mem", memory, 0, MEM_SIZE1-1);
+ $readmemh("audio3.mem", memory, MEM_SIZE1, MEM_SIZE2-1);
+ $readmemh("jingle.mem", memory, MEM_SIZE2, MEM_SIZE3-1);
+
+end
+
+
+
+
+reg play = 1;
+
+reg [4:0] prescaler; 
+
+reg [10:0] counter;
+
+reg [19:0] address;
+
+reg [10:0] value;
+
+always @(posedge CLOCK_50 or negedge KEY[0])begin
+ if ( ~KEY[0]) begin
+	 play = 0;
+	 //DIVISOR <= 28'd5;
+	 end
+else
+
+	 
+		case (SW[9:0])
+			10'b0000000001: 	begin
+							MEM_SIZE_init <= 0;
+							MEM_SIZE_fin <= MEM_SIZE1;
+							play <= 1;
+							//DIVISOR <= 28'd5;
+						end
+			10'b0000000010:	begin
+							MEM_SIZE_init <= MEM_SIZE1;
+							MEM_SIZE_fin <= MEM_SIZE2;
+							play <= 1;
+							//DIVISOR <= 28'd100;
+
+						end
+			10'b0000000100:	begin
+							MEM_SIZE_init <= MEM_SIZE2;
+							MEM_SIZE_fin <= MEM_SIZE3;
+							play <= 1;
+							//DIVISOR <= 28'd1000;
+							
+						end
+			default: begin 
+							play <= 0;
+							//DIVISOR <= 28'd5;
+						end
+			//default play <= 1;
+		endcase
+	//end
+end
+
+always @(posedge CLOCK_50)begin
+ledcounter <= (ledcounter<50000000) ? ledcounter +1 : 0;
+if(ledcounter == 50000000)	 
+		case (SW[9:0])
+			10'b0000000001: 	begin
+						LEDR [0] =   ~ LEDR[0];
+						end
+			10'b0000000010:	begin
+						LEDR [1] =   ~ LEDR [1];
+						end
+			10'b0000000100:	begin
+						LEDR [2] =   ~ LEDR [2];
+						end
+			10'b0000000000: begin 
+						LEDR [9:0] = 10'b0000000000;
+						end
+			default: LEDR [9:0] = ~ LEDR [9:0];
+					
+						
+						
+			//default play <= 1;
+		endcase
+	//end
+	
+end
+
+always @(posedge CLOCK_50 or negedge KEY[0])begin
+ if ( ~KEY[0]) begin
+		
+						HEX5 [7:0] = 8'b11111111;
+						HEX4 [7:0] = 8'b10001100;
+						HEX3 [7:0] = 8'b10001000;
+						HEX2 [7:0] = 8'b11000001;
+						HEX1 [7:0] = 8'b10010010;
+						HEX0 [7:0] = 8'b10000110;
+	 end
+else	 
+		case (SW[9:0])
+			10'b0000000001: 	begin
+						HEX0 [7:0] = 8'b11111001;
+						HEX5 [7:0] = 8'b10010010;
+						HEX4 [7:0] = 8'b11000000;
+						HEX3 [7:0] = 8'b11000001;
+						HEX2 [7:0] = 8'b11001000;
+						HEX1 [7:0] = 8'b10100001;
+						end
+			10'b0000000010:	begin
+						HEX0 [7:0] = 8'b10100100;
+						HEX5 [7:0] = 8'b10010010;
+						HEX4 [7:0] = 8'b11000000;
+						HEX3 [7:0] = 8'b11000001;
+						HEX2 [7:0] = 8'b11001000;
+						HEX1 [7:0] = 8'b10100001;
+						end
+			10'b0000000100:	begin
+						HEX0 [7:0] = 8'b10110000;	
+						HEX5 [7:0] = 8'b10010010;
+						HEX4 [7:0] = 8'b11000000;
+						HEX3 [7:0] = 8'b11000001;
+						HEX2 [7:0] = 8'b11001000;
+						HEX1 [7:0] = 8'b10100001;	
+						end
+			10'b0000000000:	begin							
+						HEX5 [7:0] = 8'b11000110;
+						HEX4 [7:0] = 8'b10001001;
+						HEX3 [7:0] = 8'b11000000;
+						HEX2 [7:0] = 8'b11000000;
+						HEX1 [7:0] = 8'b10010010;
+						HEX0 [7:0] = 8'b10000110;
+						end
+			default: begin 
+						HEX0 [7:0] = 8'b10000110;
+						HEX5 [7:0] = 8'b11111111;
+						HEX4 [7:0] = 8'b11111111;
+						HEX3 [7:0] = 8'b11111111;
+						HEX2 [7:0] = 8'b11111111;
+						HEX1 [7:0] = 8'b11111111;
+					
+						
+						end
+			//default play <= 1;
+		endcase
+	//end
+end
+
+
+always @(posedge clock)
+
+begin
+
+
+ if (play) begin
+	
+
+
+		//prescaler <= prescaler + 1;
+
+	 //if (prescaler == 15) // 8kHz x 256 steps = 2.048 MHz
+
+		 //begin
+
+		 //prescaler <= 0;
+
+		 counter <= counter + 1;
+
+		 value <= memory[address + MEM_SIZE_init];
+
+		 GPIO [0] <= (value > counter);
+		 
+		 GPIO [1] <= (value > counter);
+
+		 if (counter == 700)
+
+			 begin
+			 
+
+			 address <= address + 1;
+			 
+			 counter <= 0;			 
+			 
+
+			 if (address  == MEM_SIZE_fin)
+
+				 begin
+				 
+				 //play = 0;
+				 
+				 
+
+				 address <= 0;
+
+				 end 
+
+			 end 
+
+		// end
+
+	 end
+//
+	
+ //else 
+end
+
+endmodule
+
